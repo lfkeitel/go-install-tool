@@ -23,23 +23,23 @@ Usage
 ```
 
 Flags:
-* -u Update to current version (as defined by script)
+* -u Update to current version (as defined by script). Update will use your current $GOROOT and $GOPATH to install Go and verify your workspace.
+     This option can be combined with -p and -w or -s to specifiy a new install/workspace directory. The old $GOROOT will be removed.
 * -b Rebuild system path variables (use the same flags for a normal install but add this)
-* -s Single user install (install to $HOME/.go instead of /usr/local)
-     Effectively equal to '-p $HOME/.go'
-* -f Force reinstall of Go. Uninstalls any versions given same install paramenters
-     and installs from scratch. Use to switch from single-user to system-wide setup,
-     or simply reinstall go.
-* -x Uninstall Go
-* -a Architecture type. Valid parameters are 32 or 64. If not 32, assumed to be 64.
+* -s Single user install (install to $HOME/.go instead of /usr/local). Effectively equal to '-p $HOME/.go'
+* -f Force reinstall of Go. Uninstalls any versions and installs from scratch. Use to switch from single-user to system-wide setup, or simply reinstall go. Uses current $GOROOT and $GOPATH to reinstall go and verify workspace.
+* -x Uninstall Go (if $GOROOT is defined)
+* -a Architecture type. Valid parameters are 32 or 64. Assumed to be 64.
 * -r Release version to install. E.g. 1.3.2
 * -p Path for Go install directory
 * -w Path for Go workspace
 
+-u and -f must be the first flag if used.
+
 Examples
 --------
 
-To install 64-bit (system-wide, default install and workspace directories, simpliest)
+To install 64-bit (system-wide, default install/workspace directories, simpliest)
 
 ```bash
 $ ./install_go.sh
@@ -93,12 +93,6 @@ Force system-wide reinstall:
 $ ./install_go.sh -f
 ```
 
-Force single-user reinstall:
-
-```bash
-$ ./install_go.sh -sf
-```
-
 Rebuild system Go path variables (default installation):
 
 ```bash
@@ -118,9 +112,18 @@ Notes
 -----
 
 * If $GOROOT is not defined, this script cannot uninstall Go.
+* Uninstalling Go with this tool will not remove the workspace.
 
 Release Notes
 -------------
+
+v1.1.0
+
+- Better file handling, only asks for root if needed
+- Asks to confirm $GOROOT and $GOPATH
+- Using -p will now use the specified directory as GOROOT instead of [dir]/go
+- -u and -f no longer require the environment flags to be specified if updating or reinstalling into same GOROOT
+- Refactor
 
 v1.0.0
 
