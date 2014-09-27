@@ -109,6 +109,7 @@ Defaults
 --------
 
 Go install directory: /usr/local
+
 Go workspace: $HOME/go
 
 Read more about the workspace at http://golang.org/doc/code.html
