@@ -108,7 +108,7 @@ $ ./install_go.sh -b
 Defaults
 --------
 
-Go install directory: /usr/local
+Go install directory: /usr/local/go
 
 Go workspace: $HOME/go
 
