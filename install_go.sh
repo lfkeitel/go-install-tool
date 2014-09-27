@@ -35,35 +35,24 @@
 #   -f Force reinstall of Go. Uninstalls any versions given same install paramenters
 #      and installs from scratch
 
-# Script variables
-#
+## BEGIN VARIABLE DECLARATIONS ##
 WGET=`which wget`
 GOVER="1.3.2"
 GOOS="linux"
 GOARCH="amd64"
 GOCODEDIR="${HOME}/go"
 GODIR="/usr/local"
-UPDATE=false
 SINGLE=false
 FORCE=false
 REBUILD=false
+CUSPATH=false
+## END VARIABLE DECLARATIONS ##
 
-# Script functions
-#
+## BEGIN FUNCTION DECLARATIONS ##
 usage() {
 	echo "Usage: $0 [-u] [-b] [-s] [-f] [-x] [-a <string>] [-w <string>] [-r <string>] [-p <string>]" 1>&2
-	echo ""
+	echo
 	exit 1
-}
-
-removePaths() {
-    echo "---Deleting paths"
-    sed -i '/# GoLang Paths/d' $HOME/.bashrc
-    sed -i '/export GOROOT/d' $HOME/.bashrc
-    sed -i '/export GOPATH/d' $HOME/.bashrc
-    sed -i '/:$GOPATH/d' $HOME/.bashrc
-    sed -i '/export GOBIN/d' $HOME/.bashrc
-    sed -i '/export GOSRC/d' $HOME/.bashrc
 }
 
 uninstall() {
@@ -76,46 +65,141 @@ uninstall() {
 
 	echo "Deleting install directory"
 	if [[ -d "$GOROOT" ]]; then
-		sudo rm -r $GOROOT
+		sudo rm -R $GOROOT
 	fi
     removePaths
 	echo "Done"
 }
 
+downloadGo() {
+    echo "--Fetching Go language archive--"
+    echo
+    cleanUp
+    if ! $REBUILD; then
+        if ! $WGET "https://storage.googleapis.com/golang/go${GOVER}.${GOOS}-${GOARCH}.tar.gz"; then
+            echo "ERROR: Download failed. Exiting."
+            echo
+            exit 1
+        fi
+    fi
+}
+
+extractGo() {
+    echo "--Extracting Go archive--"
+
+    # Create Go install dir
+    if [[ ! -d "${GOROOTDIR}" || ! -L "${GOROOTDIR}" ]]; then
+        if ! mkdir -p ${GOROOTDIR} 2>/dev/null; then
+            sudo mkdir -p ${GOROOTDIR}
+        fi
+    fi
+
+    # Extract
+    if ! tar -xzf "go${GOVER}.${GOOS}-${GOARCH}.tar.gz"; then
+        exit 1
+    fi
+
+    # Move
+    if ! mv go/* $GOROOTDIR 2>/dev/null; then
+        sudo mv go/* $GOROOTDIR
+    fi
+}
+
+createWorkspace() {
+    if [[ -d "${GOCODEDIR}" && ! -L "${GOCODEDIR}" ]]; then
+        echo "--Go Workspace already made--"
+    else
+        echo "--Making Go Workspace--"
+        mkdir -p ${GOCODEDIR}/src; echo "---Created workspace src folder"
+        mkdir -p ${GOCODEDIR}/bin; echo "---Created workspace bin folder"
+        mkdir -p ${GOCODEDIR}/pkg; echo "---Created workspace pkg folder"
+    fi
+}
+
+removePaths() {
+    echo "---Deleting paths"
+    sed -i '/# GoLang Paths/d' $HOME/.bashrc
+    sed -i '/export GOROOT/d' $HOME/.bashrc
+    sed -i '/export GOPATH/d' $HOME/.bashrc
+    sed -i '/export GOBIN/d' $HOME/.bashrc
+    sed -i '/export GOSRC/d' $HOME/.bashrc
+    sed -i '/:$GOROOT/d' $HOME/.bashrc
+}
+
+createPaths() {
+    echo "--Writting Go variables--"
+    touch $HOME/.bashrc
+    if grep -q "# GoLang Paths" "${HOME}/.bashrc" && ! $REBUILD; then
+        echo "---Go bin already added to PATH"
+    else
+        removePaths
+        echo "---Adding Paths"
+        echo '# GoLang Paths' >> $HOME/.bashrc
+        echo "export GOROOT=${GOROOTDIR}" >> $HOME/.bashrc
+        echo "export GOPATH=${GOCODEDIR}" >> $HOME/.bashrc
+        echo 'export GOBIN=$GOPATH/bin' >> $HOME/.bashrc
+        echo 'export GOSRC=$GOPATH/src' >> $HOME/.bashrc
+        echo 'export PATH=$PATH:$GOBIN:$GOROOT/bin' >> $HOME/.bashrc
+    fi
+}
+
+cleanUp() {
+    if [[ -f "go${GOVER}.${GOOS}-${GOARCH}.tar.gz" ]]; then
+        rm go${GOVER}.${GOOS}-${GOARCH}.tar.gz
+    fi
+
+    if [[ -d "go" ]]; then
+        rm -r go
+    fi
+}
+## END FUNCTION DECLARATIONS ##
+
+## BEGIN MAIN SCRIPT ##
 # Parse arguments
 #
 while getopts ":ubsfxa:w:r:p:" o; do
     case "${o}" in
-    	a) # Architecture
-			if ${OPTARG} == "32"; then
-				GOARCH="386"
-			fi
-			;;
+        a) # Architecture
+            if ${OPTARG} == "32"; then
+                GOARCH="386"
+            fi
+            ;;
         b) # Rebuild paths
             REBUILD=true
+            echo
+            echo "## Performing path rebuild ##"
             ;;
         w) # Workspace dir
             GOCODEDIR=${OPTARG}
             ;;
         u) # Update to $GOVER
-            UPDATE=true
+            FORCE=true
+            GODIR=$GOROOT       # Get current Go install directory
+            GOCODEDIR=$GOPATH   # Get current workspace directory
+            echo
+            echo "## Performing update ##"
             ;;
         r) # Set version to install
             GOVER=${OPTARG}
             ;;
         p) # Install dir
-			GODIR=${OPTARG}
-			;;
-		x) # Uninstall
-			uninstall
+            GODIR=${OPTARG}
+            CUSPATH=true
+            ;;
+        x) # Uninstall
+            uninstall
             exit 0
-			;;
+            ;;
         s) # Single-user install
             GODIR="$HOME/.go"
             SINGLE=true
             ;;
         f) # Force reinstall
             FORCE=true
+            GODIR=$GOROOT       # Get current Go install directory
+            GOCODEDIR=$GOPATH   # Get current workspace directory
+            echo
+            echo "## Performing forced reinstall ##"
             ;;
         *) # Other
             usage
@@ -125,126 +209,84 @@ done
 
 # Full Go install path
 #
-GOROOTDIR="${GODIR}/go"
-
-# Check if install directory exists
-#
-if [[ -d "${GODIR}" || -L "${GODIR}" ]] && ! $FORCE && ! $REBUILD && ! $UPDATE; then
-    echo "ERROR: Go appears to already be installed, to force a reinstall use -f"
-    exit 1
-fi
-
-# Forced install message
-#
-if $FORCE; then
-    echo ""
-    echo "## Performing forced reinstall ##"
-    echo ""
-fi
-
-# Rebuild path message
-#
-if $REBUILD; then
-    echo ""
-    echo "## Performing path rebuild ##"
-    echo ""
-fi
-
-# Download archive
-#
-echo "--Fetching go language archive--"
-echo ""
-# Delete any existing file with the same name
-if [[ -f "go${GOVER}.${GOOS}-${GOARCH}.tar.gz" ]]; then
-    rm go${GOVER}.${GOOS}-${GOARCH}.tar.gz
-fi
-if ! $REBUILD; then
-    if ! $WGET "https://storage.googleapis.com/golang/go${GOVER}.${GOOS}-${GOARCH}.tar.gz"; then
-    	echo "ERROR: Download failed. Exiting."
-    	exit 1
-    fi
-fi
-
-# If updating or force reinstalling Go, delete old version
-#
-if $UPDATE || $FORCE; then
-	echo "--Removing old version of Go--"
-    uninstall
-fi
-
-# Extract Go
-#
-if ! $REBUILD; then
-    echo "--Extracting Go archive--"
-    if [[ ! -d "${GODIR}" || ! -L "${GODIR}" ]]; then
-        mkdir -p ${GODIR}
-    fi
-
-    if $SINGLE; then
-        if ! tar -C ${GODIR} -xzf "go${GOVER}.${GOOS}-${GOARCH}.tar.gz"; then
-            exit 1
-        fi
-    else
-        if ! sudo tar -C ${GODIR} -xzf "go${GOVER}.${GOOS}-${GOARCH}.tar.gz"; then
-        	exit 1
-        fi
-    fi
-fi
-
-# Create Go workspace
-#
-if [[ -d "${GOCODEDIR}" && ! -L "${GOCODEDIR}" ]]; then
-    echo "--Go Workspace already made--"
+if ! $FORCE && ! $SINGLE && ! $CUSPATH; then
+    GOROOTDIR="${GODIR}/go"
 else
-    echo "--Making Go Workspace--"
-    mkdir -p ${GOCODEDIR}/src; echo "---Created workspace src folder"
-    mkdir -p ${GOCODEDIR}/bin; echo "---Created workspace bin folder"
-    mkdir -p ${GOCODEDIR}/pkg; echo "---Created workspace pkg folder"
+    GOROOTDIR=$GODIR
 fi
 
-# Add variables to bashrc
-#
-echo "--Writting Go variables--"
-touch $HOME/.bashrc
-if grep -q "# GoLang Paths" "${HOME}/.bashrc" && ! $REBUILD; then
-	echo "---Go bin already added to PATH"
-else
-    removePaths
-    echo "---Adding Paths"
-	echo '# GoLang Paths' >> $HOME/.bashrc
-	echo "export GOROOT=${GOROOTDIR}" >> $HOME/.bashrc
-	echo "export GOPATH=${GOCODEDIR}" >> $HOME/.bashrc
-	echo 'export PATH=$PATH:$GOPATH/bin:$GOROOT/bin' >> $HOME/.bashrc
-	echo 'export GOBIN=$GOPATH/bin' >> $HOME/.bashrc
-	echo 'export GOSRC=$GOPATH/src' >> $HOME/.bashrc
-fi
+echo
+echo "\$GOROOT will be ${GOROOTDIR}"
+echo "\$GOPATH will be ${GOCODEDIR}"
+echo
+read -p "Are you sure? " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then # This form is safer
 
-# Cleanup
-#
-echo "--Cleaning up--"
-source $HOME/.bashrc
-if [[ -f "go${GOVER}.${GOOS}-${GOARCH}.tar.gz" ]]; then
-    rm go${GOVER}.${GOOS}-${GOARCH}.tar.gz
-fi
-echo "---Successfully installed Go ${GOVER}"
+    # Check if Go is possibly already installed
+    #
+    if [[ -d "${GOROOTDIR}" || -L "${GOROOTDIR}" ]] || [[ -d $GOROOT ]] && ! $FORCE && ! $REBUILD; then
+        echo "ERROR: Go appears to already be installed."
+        echo "To force a reinstall use -f as the first argument"
+        echo
+        exit 1
+    fi
 
-# Thank you message
-#
-cat <<EOF
+    # Download archive
+    #
+    downloadGo
 
-  Thank you for installing Go!
+    # If updating or force reinstalling Go, delete old version
+    #
+    if $FORCE; then
+    	echo "--Removing old version of Go--"
+        uninstall
+    fi
 
-  Please run the following line to finish the installation
-  (or open a new terminal):
-     source $HOME/.bashrc
+    # Extract Go
+    #
+    if ! $REBUILD; then
+        extractGo
+    fi
 
-  You can see all the go command line options by
-  running the following command:
-     go help
+    # Create Go workspace
+    #
+    createWorkspace
 
-  This script was created by DragonRider23.
-  https://github.com/dragonrider23/go-install-tool
 
-  Released under the MIT license.
-  
+    # Add variables to bashrc
+    #
+    createPaths
+
+    # Cleanup
+    #
+    echo "--Cleaning up--"
+    source $HOME/.bashrc # If the user invokes with . ./ notation, source it for them. They deserve it.
+    cleanUp
+    echo "---Successfully installed Go ${GOVER}"
+
+    # Thank you message
+    #
+    cat <<EOF
+
+      Thank you for installing Go!
+
+      Please run the following line to finish the installation
+      (or open a new terminal):
+         source $HOME/.bashrc
+
+      You can see all the go command line options by
+      running the following command:
+         go help
+
+      This script was created by DragonRider23.
+      https://github.com/dragonrider23/go-install-tool
+
+      Released under the MIT license.
+      
 EOF
+else # Else from original question
+    echo
+    exit 0
+fi
+## END MAIN SCRIPT ##
