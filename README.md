@@ -75,6 +75,12 @@ Install a specific version:
 $ ./install_go.sh -r 1.3.1
 ```
 
+Update to a specific version:
+
+```bash
+$ ./install_go.sh -ur 1.3.3
+```
+
 Define custom Go install directory:
 
 ```bash
