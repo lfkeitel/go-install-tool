@@ -160,7 +160,7 @@ cleanUp() {
 while getopts ":ubsfxa:w:r:p:" o; do
     case "${o}" in
         a) # Architecture
-            if ${OPTARG} == "32"; then
+            if [ ${OPTARG} == "32" ]; then
                 GOARCH="386"
             fi
             ;;
