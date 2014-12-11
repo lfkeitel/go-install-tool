@@ -123,7 +123,7 @@ Notes
 Release Notes
 -------------
 
-v1.1.1
+v1.1.2
 
 - Updated current Go version to 1.4
 
