@@ -37,7 +37,7 @@
 
 ## BEGIN VARIABLE DECLARATIONS ##
 WGET=`which wget`
-GOVER="1.4"
+GOVER="1.4.1"
 GOOS="linux"
 GOARCH="amd64"
 GOCODEDIR="${HOME}/go"
