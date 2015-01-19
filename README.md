@@ -3,7 +3,7 @@ Go Install Script for Linux
 
 Bash script to automate Go language tools single user or system-wide installation (Linux).
 
-Latest available version for download at the time of this writing was for Go version 1.4.
+Latest available version for download at the time of this writing was for Go version 1.4.1.
 
 Requirements
 ------------
