@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Author: DragonRider23
+# Author: Lee Keitel
 # License: MIT
 #
 # Short bash script to install the latest version of Go
@@ -37,7 +37,7 @@
 
 ## BEGIN VARIABLE DECLARATIONS ##
 WGET=`which wget`
-GOVER="1.4.1"
+GOVER="1.8.3"
 GOOS="linux"
 GOARCH="amd64"
 GOCODEDIR="${HOME}/go"
@@ -279,11 +279,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then # This form is safer
       running the following command:
          go help
 
-      This script was created by DragonRider23.
-      https://github.com/dragonrider23/go-install-tool
-
-      Released under the MIT license.
-      
 EOF
 else # Else from original question
     echo
